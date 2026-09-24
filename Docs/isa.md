@@ -75,7 +75,7 @@ Reference:
         Definition: The logic block that translates machine instructions into low-level control signals.
         Function: Parses opcode bit fields, identifies source/destination register addresses, detects execution dependency constraints, and generates micro-architectural control signals required by the execution pipelines.
 
-    1.4 PC (Program Counter)
+    PC (Program Counter)
         Definition: A dedicated pointer register maintained per active warp or thread group.
         Function: Holds the memory address of the current or next instruction to be fetched, updating sequentially or jumping based on branch and control flow instructions.
 
