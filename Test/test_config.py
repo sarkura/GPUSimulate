@@ -21,6 +21,7 @@ INCLUDE_PATHS = [INCLUDES_DIR]
 # 3. Verilog source files per module
 RTL_SOURCES = {
     "alu": [CORE_DIR / "alu.v"],
+    "register_file": [CORE_DIR / "register_file.v"],
     # Add new modules here:
     # "decoder": [CORE_DIR / "decoder.v"],
     # "register_file": [CORE_DIR / "register_file.v"],

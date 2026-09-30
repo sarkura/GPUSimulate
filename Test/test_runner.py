@@ -46,10 +46,19 @@ def test_alu():
         test_module_name="test_alu"
     )
 
+def test_register_file():
+    """Register file test entry point"""
+    run_module_test(
+        toplevel_name="register_file",
+        sources=config.RTL_SOURCES["register_file"],  # Source paths looked up in config by module name
+        test_module_name="test_register_file"
+    )
+
 
 def test_all():
     """Run all module tests"""
     test_alu()
+    test_register_file()
 
 
 if __name__ == "__main__":
