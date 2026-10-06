@@ -22,9 +22,14 @@ INCLUDE_PATHS = [INCLUDES_DIR]
 RTL_SOURCES = {
     "alu": [CORE_DIR / "alu.v"],
     "register_file": [CORE_DIR / "register_file.v"],
+    "decoder": [CORE_DIR / "decoder.v"],
+    "core": [
+        CORE_DIR / "alu.v",
+        CORE_DIR / "register_file.v",
+        CORE_DIR / "decoder.v",
+        CORE_DIR / "core.v",
+    ],
     # Add new modules here:
-    # "decoder": [CORE_DIR / "decoder.v"],
-    # "register_file": [CORE_DIR / "register_file.v"],
 }
 
 # 4. Directory containing test case modules (Test/Modules)

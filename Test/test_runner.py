@@ -55,10 +55,30 @@ def test_register_file():
     )
 
 
+def test_decoder():
+    """Decoder test entry point"""
+    run_module_test(
+        toplevel_name="decoder",
+        sources=config.RTL_SOURCES["decoder"],  # Source paths looked up in config by module name
+        test_module_name="test_decoder"
+    )
+
+
+def test_core():
+    """Core test entry point"""
+    run_module_test(
+        toplevel_name="core",
+        sources=config.RTL_SOURCES["core"],  # Source paths looked up in config by module name
+        test_module_name="test_core"
+    )
+
+
 def test_all():
     """Run all module tests"""
     test_alu()
     test_register_file()
+    test_decoder()
+    test_core()
 
 
 if __name__ == "__main__":
