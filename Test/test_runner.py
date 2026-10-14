@@ -73,12 +73,22 @@ def test_core():
     )
 
 
+def test_memory_controller():
+    """Memory controller test entry point"""
+    run_module_test(
+        toplevel_name="memory_controller",
+        sources=config.RTL_SOURCES["memory_controller"],  # Source paths looked up in config by module name
+        test_module_name="test_memory_controller"
+    )
+
+
 def test_all():
     """Run all module tests"""
     test_alu()
     test_register_file()
     test_decoder()
     test_core()
+    test_memory_controller()
 
 
 if __name__ == "__main__":

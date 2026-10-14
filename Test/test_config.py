@@ -14,6 +14,7 @@ PROJECT_ROOT = TEST_DIR.parent
 SOURCE_DIR = PROJECT_ROOT / "Source"
 INCLUDES_DIR = SOURCE_DIR / "Includes"
 CORE_DIR = SOURCE_DIR / "Core"
+MEMORY_DIR = SOURCE_DIR / "Memory"
 
 # Centralized list of include directories (corresponds to -I flags)
 INCLUDE_PATHS = [INCLUDES_DIR]
@@ -29,6 +30,7 @@ RTL_SOURCES = {
         CORE_DIR / "decoder.v",
         CORE_DIR / "core.v",
     ],
+    "memory_controller": [MEMORY_DIR / "memory_controller.v"],
     # Add new modules here:
 }
 
