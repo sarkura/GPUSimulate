@@ -14,6 +14,8 @@
 `define ADDR_WIDTH      8       // Memory address width (8-bit)
 `define REG_ADDR_WIDTH  3       // Register address width (3-bit, supports 8 registers R0~R7)
 `define REG_NUM         8       // Total number of general-purpose registers
+`define CORE_NUM        4       // Compute cores in the dispatch array
+`define LANE_NUM        4       // SIMD lanes inside one compute core
 
 
 

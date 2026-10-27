@@ -1,13 +1,15 @@
 // ============================================================================
 // File: Source/Core/register_file.v
-// Description: Arithmetic Logic Unit for Tiny-GPU
+// Description: Register file for one Tiny-GPU lane
 // ============================================================================
 `timescale 1ns / 1ps
 
 `include "defines.vh"
 `include "config.vh"
 
-module register_file (
+module register_file #(
+    parameter [`DATA_WIDTH-1:0] RESET_R7 = {`DATA_WIDTH{1'b0}}
+) (
     input  wire clk,
     input  wire reset,
 
@@ -55,10 +57,11 @@ module register_file (
 
         if (reset) begin
 
-            // Clear all registers.
+            // Clear all registers. R7 keeps the lane index when a lane sets RESET_R7.
             for (i = 0; i < `REG_NUM; i = i + 1) begin
                 registers[i] <= {`DATA_WIDTH{1'b0}};
             end
+            registers[`REG_NUM-1] <= RESET_R7;
 
         end else if (write_en) begin
 

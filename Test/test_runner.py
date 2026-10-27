@@ -14,7 +14,7 @@ if str(config.TEST_DIR) not in sys.path:
     sys.path.append(str(config.TEST_DIR))
 
 
-def run_module_test(toplevel_name, sources, test_module_name):
+def run_module_test(toplevel_name, sources, test_module_name, parameters=None):
     """Generic module test dispatcher"""
     runner = get_runner(config.DEFAULT_SIMULATOR)
     build_dir = config.SIM_BUILD_ROOT / toplevel_name
@@ -24,6 +24,7 @@ def run_module_test(toplevel_name, sources, test_module_name):
         sources=sources,
         hdl_toplevel=toplevel_name,
         includes=config.INCLUDE_PATHS,   # Include paths read from config
+        parameters=parameters or {},
         always=True,
         build_dir=build_dir
     )
@@ -64,6 +65,43 @@ def test_decoder():
     )
 
 
+def test_fetcher():
+    """Fetcher test entry point"""
+    run_module_test(
+        toplevel_name="fetcher",
+        sources=config.RTL_SOURCES["fetcher"],  # Source paths looked up in config by module name
+        test_module_name="test_fetcher"
+    )
+
+
+def test_lsu():
+    """LSU test entry point"""
+    run_module_test(
+        toplevel_name="lsu",
+        sources=config.RTL_SOURCES["lsu"],  # Source paths looked up in config by module name
+        test_module_name="test_lsu"
+    )
+
+
+def test_scheduler():
+    """Scheduler test entry point"""
+    run_module_test(
+        toplevel_name="scheduler",
+        sources=config.RTL_SOURCES["scheduler"],  # Source paths looked up in config by module name
+        test_module_name="test_scheduler"
+    )
+
+
+def test_lane():
+    """Lane test entry point. LANE_ID is 3 so R7 resets to the lane index."""
+    run_module_test(
+        toplevel_name="lane",
+        sources=config.RTL_SOURCES["lane"],  # Source paths looked up in config by module name
+        test_module_name="test_lane",
+        parameters={"LANE_ID": 3}
+    )
+
+
 def test_core():
     """Core test entry point"""
     run_module_test(
@@ -82,13 +120,27 @@ def test_memory_controller():
     )
 
 
+def test_dispatcher():
+    """Dispatcher test entry point"""
+    run_module_test(
+        toplevel_name="dispatcher",
+        sources=config.RTL_SOURCES["dispatcher"],  # Source paths looked up in config by module name
+        test_module_name="test_dispatcher"
+    )
+
+
 def test_all():
     """Run all module tests"""
     test_alu()
     test_register_file()
     test_decoder()
+    test_fetcher()
+    test_lsu()
+    test_scheduler()
+    test_lane()
     test_core()
     test_memory_controller()
+    test_dispatcher()
 
 
 if __name__ == "__main__":

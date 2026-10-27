@@ -1,6 +1,6 @@
 # ============================================================================
 # File: Test/Modules/test_core.py
-# Description: Cocotb test cases for the single-cycle Tiny-GPU core.
+# Description: Cocotb test cases for the four-lane Tiny-GPU core.
 # ============================================================================
 
 import cocotb
@@ -24,6 +24,7 @@ MEM_CMD_READ  = 0x1
 MEM_CMD_WRITE = 0x2
 
 DATA_MEM_WORDS = 256
+LANE_NUM = 4
 
 
 def encode_inst(opcode, rdst=0, rsrc1=0, rsrc2=0, reserved=0):
@@ -52,7 +53,8 @@ async def start_core(dut):
 
 async def run_program(dut, imem, dmem):
     """Execute until HALT. Instruction and data memory are plain Python lists."""
-    for _ in range(len(imem) + 2):
+    # A split memory instruction can take one cycle per lane.
+    for _ in range(len(imem) * LANE_NUM + 8):
         await FallingEdge(dut.clk)
         pc = int(dut.pc.value)
         dut.inst.value = imem[pc] if pc < len(imem) else encode_inst(OP_HALT)
@@ -143,3 +145,56 @@ async def test_core_branch_and_halt(dut):
     assert dmem[0] == 3, f"Skipped STR wrote memory: mem[0] = {dmem[0]}"
     assert dut.halted.value == 1, "Core did not stay halted"
     assert dut.mem_cmd.value == MEM_CMD_IDLE, "Memory command not idle after HALT"
+
+
+def lane_pc(dut, lane):
+    """Lane PCs are packed with lane 0 in the low byte"""
+    return (int(dut.lane_pc.value) >> (8 * lane)) & 0xFF
+
+
+@cocotb.test()
+async def test_core_lane_stores(dut):
+    """Lanes that share a PC store different addresses through R7, the lane index"""
+
+    dmem = [0] * DATA_MEM_WORDS
+    dmem[0] = 16
+    imem = [
+        encode_inst(OP_LDR, rdst=1, rsrc1=0),          # R1 = 16, one coalesced read
+        encode_inst(OP_ADD, rdst=2, rsrc1=1, rsrc2=7),  # R2 = 16 + lane
+        encode_inst(OP_STR, rsrc1=2, rsrc2=2),          # mem[16 + lane] = 16 + lane
+        encode_inst(OP_HALT),
+    ]
+
+    await start_core(dut)
+    halt_pc = await run_program(dut, imem, dmem)
+
+    assert halt_pc == 3, f"Store program halted at PC {halt_pc}"
+    assert [dmem[16 + lane] for lane in range(LANE_NUM)] == [16, 17, 18, 19], (
+        f"Per-lane stores failed: {[dmem[16 + lane] for lane in range(LANE_NUM)]}"
+    )
+
+
+@cocotb.test()
+async def test_core_lane_branch(dut):
+    """A diverged branch sends each lane to its own HALT"""
+
+    # Targets are 3, 4, 5, and 6, and each of those words is HALT.
+    dmem = [0] * DATA_MEM_WORDS
+    dmem[0] = 3
+    imem = [
+        encode_inst(OP_LDR, rdst=1, rsrc1=0),          # R1 = 3
+        encode_inst(OP_ADD, rdst=1, rsrc1=1, rsrc2=7),  # R1 = 3 + lane
+        encode_inst(OP_BR, rsrc1=1),
+        encode_inst(OP_HALT),
+        encode_inst(OP_HALT),
+        encode_inst(OP_HALT),
+        encode_inst(OP_HALT),
+    ]
+
+    await start_core(dut)
+    await run_program(dut, imem, dmem)
+
+    assert [lane_pc(dut, lane) for lane in range(LANE_NUM)] == [3, 4, 5, 6], (
+        f"Diverged HALT PCs were {[lane_pc(dut, lane) for lane in range(LANE_NUM)]}"
+    )
+    assert dut.halted.value == 1, "Core did not halt after every lane reached HALT"

@@ -15,6 +15,7 @@ SOURCE_DIR = PROJECT_ROOT / "Source"
 INCLUDES_DIR = SOURCE_DIR / "Includes"
 CORE_DIR = SOURCE_DIR / "Core"
 MEMORY_DIR = SOURCE_DIR / "Memory"
+TOP_DIR = SOURCE_DIR / "Top"
 
 # Centralized list of include directories (corresponds to -I flags)
 INCLUDE_PATHS = [INCLUDES_DIR]
@@ -24,13 +25,27 @@ RTL_SOURCES = {
     "alu": [CORE_DIR / "alu.v"],
     "register_file": [CORE_DIR / "register_file.v"],
     "decoder": [CORE_DIR / "decoder.v"],
+    "fetcher": [CORE_DIR / "fetcher.v"],
+    "lsu": [CORE_DIR / "lsu.v"],
+    "scheduler": [CORE_DIR / "scheduler.v"],
+    "lane": [
+        CORE_DIR / "alu.v",
+        CORE_DIR / "register_file.v",
+        CORE_DIR / "lsu.v",
+        CORE_DIR / "lane.v",
+    ],
     "core": [
         CORE_DIR / "alu.v",
         CORE_DIR / "register_file.v",
         CORE_DIR / "decoder.v",
+        CORE_DIR / "lsu.v",
+        CORE_DIR / "fetcher.v",
+        CORE_DIR / "scheduler.v",
+        CORE_DIR / "lane.v",
         CORE_DIR / "core.v",
     ],
     "memory_controller": [MEMORY_DIR / "memory_controller.v"],
+    "dispatcher": [TOP_DIR / "dispatcher.v"],
     # Add new modules here:
 }
 
