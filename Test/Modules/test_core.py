@@ -39,16 +39,22 @@ def encode_inst(opcode, rdst=0, rsrc1=0, rsrc2=0, reserved=0):
 
 
 async def start_core(dut):
-    """Start the clock and apply reset. pc is 0 and the core is running."""
+    """Reset, then pulse start. pc is 0 and the core is running."""
     dut.reset.value = 1
+    dut.start.value = 0
+    dut.stall.value = 0
     dut.inst.value = 0
     dut.mem_rdata.value = 0
     cocotb.start_soon(Clock(dut.clk, 10, unit="ns").start())
     await RisingEdge(dut.clk)
     dut.reset.value = 0
+    dut.start.value = 1
+    await RisingEdge(dut.clk)
+    dut.start.value = 0
     await Timer(1, unit="ns")
     assert dut.pc.value == 0, f"PC reset failed: {dut.pc.value}"
     assert dut.halted.value == 0, "Core halted out of reset"
+    assert dut.idle.value == 0, "Core did not leave idle after start"
 
 
 async def run_program(dut, imem, dmem):

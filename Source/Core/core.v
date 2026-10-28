@@ -12,6 +12,12 @@ module core (
     input  wire                              clk,
     input  wire                              reset,
 
+    // start is a one-cycle pulse. The core accepts it only while idle.
+    // stall holds retirement when the shared data memory belongs to another core.
+    input  wire                              start,
+    input  wire                              stall,
+    output wire                              idle,
+
     // Instruction port from the fetcher. One instruction per address.
     output wire [`ADDR_WIDTH-1:0]            pc,
     input  wire [`INST_WIDTH-1:0]            inst,
@@ -40,6 +46,20 @@ module core (
     assign lane_pc = lane_pc_flat;
     assign halted  = &lane_halted_flat;
 
+    // A start pulse restarts the lanes from PC 0. After HALT the core is idle again.
+    reg running;
+    assign idle = ~running;
+    wire lane_reset = reset | (start & ~running);
+
+    always @(posedge clk or posedge reset) begin
+        if (reset)
+            running <= 1'b0;
+        else if (start && !running)
+            running <= 1'b1;
+        else if (running && halted)
+            running <= 1'b0;
+    end
+
     // 2. Schedule the lanes that share the current PC
     wire [`ADDR_WIDTH-1:0] issue_pc;
     wire [`LANE_NUM-1:0]   exec_mask;
@@ -49,13 +69,16 @@ module core (
     wire                   is_mem;
     wire [`LANE_NUM-1:0]   ack_mask;
 
+    wire [`LANE_NUM-1:0] ack_to_sched = stall ? {`LANE_NUM{1'b0}} : ack_mask;
+    wire                 retire_en    = retire & ~stall & running;
+
     scheduler u_scheduler (
         .clk         (clk),
-        .reset       (reset),
+        .reset       (lane_reset),
         .lane_pc     (lane_pc_flat),
         .lane_halted (lane_halted_flat),
         .is_mem      (is_mem),
-        .ack_mask    (ack_mask),
+        .ack_mask    (ack_to_sched),
         .issue_pc    (issue_pc),
         .exec_mask   (exec_mask),
         .serviced    (serviced),
@@ -70,7 +93,7 @@ module core (
 
     fetcher u_fetcher (
         .pc        (fetch_pc),
-        .fetch_en  (issue_valid),
+        .fetch_en  (issue_valid & running),
         .inst_addr (pc),
         .inst      (inst),
         .inst_out  (fetched_inst)
@@ -99,7 +122,7 @@ module core (
         .halt         (dec_halt)
     );
 
-    assign is_mem = issue_valid && (dec_mem_cmd != `MEM_CMD_IDLE);
+    assign is_mem = running && issue_valid && (dec_mem_cmd != `MEM_CMD_IDLE);
 
     // 5. Four lanes. R7 resets to the lane index.
     genvar gi;
@@ -109,10 +132,10 @@ module core (
                 .LANE_ID(gi)
             ) u_lane (
                 .clk          (clk),
-                .reset        (reset),
+                .reset        (lane_reset),
                 .exec_en      (exec_mask[gi]),
-                .retire       (retire),
-                .mem_ack      (ack_mask[gi]),
+                .retire       (retire_en),
+                .mem_ack      (ack_to_sched[gi]),
                 .alu_op       (alu_op),
                 .reg_write_en (reg_write_en),
                 .mem_cmd      (dec_mem_cmd),
@@ -189,7 +212,7 @@ module core (
     end
 
     assign ack_mask  = ack_mask_c;
-    assign mem_cmd   = pick_cmd;
+    assign mem_cmd   = running ? pick_cmd : `MEM_CMD_IDLE;
     assign mem_addr  = pick_addr;
     assign mem_wdata = pick_wdata;
 

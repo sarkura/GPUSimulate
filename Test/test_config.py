@@ -46,7 +46,19 @@ RTL_SOURCES = {
     ],
     "memory_controller": [MEMORY_DIR / "memory_controller.v"],
     "dispatcher": [TOP_DIR / "dispatcher.v"],
-    # Add new modules here:
+    "gpu": [
+        CORE_DIR / "alu.v",
+        CORE_DIR / "register_file.v",
+        CORE_DIR / "decoder.v",
+        CORE_DIR / "lsu.v",
+        CORE_DIR / "fetcher.v",
+        CORE_DIR / "scheduler.v",
+        CORE_DIR / "lane.v",
+        CORE_DIR / "core.v",
+        MEMORY_DIR / "memory_controller.v",
+        TOP_DIR / "dispatcher.v",
+        TOP_DIR / "gpu.v",
+    ],
 }
 
 # 4. Directory containing test case modules (Test/Modules)

@@ -21,13 +21,13 @@ The machine is 8-bit. Each instruction is 16 bits. One core has four SIMD lanes.
 | Core cache / external memory interface | — | Not written. The core data port is still one `mem_cmd`, `mem_addr`, `mem_wdata`, and `mem_rdata`. |
 | 2.2 Dispatcher | `Source/Top/dispatcher.v` | Matches the top-level block scheduler for `CORE_NUM` cores (4). A launch carries a block count. Each cycle the lowest-numbered idle core receives the next block id. `done` rises after every block has been issued and every core is idle. It does not read MMIO registers itself, and it does not schedule warps inside a core. |
 | 2.5 Memory controller | `Source/Memory/memory_controller.v` | Matches the core data port, not the two-channel DRAM controller in the diagram. One 256×8 memory. `READ` returns data in the same cycle. `WRITE` commits on the clock edge. No `ACTIVATE` sequence and no second channel. |
-| 2.3 Core array | `Source/Core/core.v` only | The dispatcher has four core slots. No top-level file instantiates four cores. |
-| 2.1 Device control registers | — | Not written. `Source/Top/gpu.v` is empty. |
-| 2.4 Cache | — | Not written. |
-| 2.6 Interconnect | — | Not written. |
-| 2.7 PCIe / DMA | — | Not written. |
+| 2.3 Core array | `Source/Top/gpu.v` | Four `core` instances. They share one instruction memory and one data memory. |
+| 2.1 Device control registers | host ports on `gpu.v` | `launch`, `block_count`, `busy`, and `done`, plus host writes into instruction and data memory. There is no MMIO register block. |
+| 2.4 Cache | — | Not written. Instructions sit in a 256-word SRAM in `gpu.v` with one read port per core. |
+| 2.6 Interconnect | data arbiter in `gpu.v` | The lowest-numbered core with a data request owns the memory port for that cycle. Other requesting cores stall. |
+| 2.7 PCIe / DMA | — | Not written. The testbench preloads memory through the host ports. |
 
-`Source/Includes/config.vh` is reserved for project switches and is empty. `Test/Software/assembler.py` and `Test/Utils/golden_models.py` are empty.
+`Source/Includes/config.vh` is reserved for project switches and is empty. The dispatcher still produces `block_id`, and the cores do not read it, so every block runs the same program.
 
 ## Instruction set
 
@@ -70,15 +70,40 @@ Instruction memory and data memory are separate. The core fetches one 16-bit ins
 Source/Includes/     defines.vh, config.vh
 Source/Core/         scheduler, fetcher, decoder, lane, lsu, alu, register file, core
 Source/Memory/       memory controller
-Source/Top/          dispatcher, gpu (empty)
+Source/Top/          dispatcher, gpu
 Docs/isa.md          block diagram and unit definitions
-Test/test_runner.py  cocotb runner
+Test/test_runner.py  cocotb runner for RTL blocks
 Test/Modules/        one test module per RTL block
+Test/Utils/          golden_models.py, the NumPy matrices
+Test/Software/       assembler.py, the standalone GPU matmul
+```
+
+## Matrix multiply
+
+`Test/Utils/golden_models.py` holds one 4×4 sample. `matrix_a()` and `matrix_b()` return the inputs. `matrix_c()` returns `A @ B` as `uint8`, which is how the GPU's 8-bit multiply and add wrap. The sample values stay inside 0..255, so this is also the full integer product.
+
+`Test/Software/assembler.py` loads that sample onto the GPU and is not part of `test_runner.py`. One block runs. The core does not receive `block_id`, so the four lanes inside that block do the parallel work, and `R7` selects the row:
+
+| Address | Contents |
+| --- | --- |
+| `0` | Constant `1`, the value a lane can load through `R0` after reset |
+| `16 .. 31` | `A`, row-major |
+| `32 .. 47` | `B`, column-major, so one column is a contiguous walk of `+1` |
+| `48 .. 63` | `C`, row-major, written by the lanes |
+
+A second image in the same file runs the identical dot product on lane 0 only. Lanes 1..3 branch to `HALT`. Lane 0 repeats the row kernel with `BR`; the next PC comes from a table in data memory because the ISA has no conditional branch.
+
+The value check compares both GPU images with `matrix_c()`. The time check reports GPU simulation cycles (a 10 ns clock) for the four-lane run and the one-lane run. It also prints the host wall-clock of one `matrix_c()` call. Those host microseconds are not the same unit as a simulated cycle.
+
+From `Test/Software`, with mingw64 Python on the `PATH` and NumPy installed:
+
+```bash
+python assembler.py
 ```
 
 ## Tests
 
-Tests use cocotb 2.x and Icarus Verilog. The checked environment is MSYS2 mingw64 (`C:\msys64\mingw64\bin` on the `PATH`).
+RTL tests use cocotb 2.x and Icarus Verilog. The checked environment is MSYS2 mingw64 (`C:\msys64\mingw64\bin` on the `PATH`).
 
 From `Test`:
 
@@ -86,4 +111,4 @@ From `Test`:
 python test_runner.py
 ```
 
-`test_runner.py` runs the ALU, register file, decoder, core, memory controller, and dispatcher suites. A single suite can be started from Python, for example `test_runner.test_core()`.
+`test_runner.py` runs every suite in `test_all()`, from the ALU through the GPU top. A single suite can be started from Python, for example `test_runner.test_core()`. The matmul above stays outside that list.

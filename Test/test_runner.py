@@ -129,6 +129,15 @@ def test_dispatcher():
     )
 
 
+def test_gpu():
+    """GPU top test entry point"""
+    run_module_test(
+        toplevel_name="gpu",
+        sources=config.RTL_SOURCES["gpu"],  # Source paths looked up in config by module name
+        test_module_name="test_gpu"
+    )
+
+
 def test_all():
     """Run all module tests"""
     test_alu()
@@ -141,6 +150,7 @@ def test_all():
     test_core()
     test_memory_controller()
     test_dispatcher()
+    test_gpu()
 
 
 if __name__ == "__main__":
